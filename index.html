@@ -122,16 +122,30 @@
             </div>
         </div>
 
-        <!-- 該次清洗範圍：可多組新增、直行橫行並列 -->
+        <!-- 顏色標籤說明 -->
+        <div style="margin:10px 0; display:flex; gap:12px; font-size:0.95em;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div style="width:16px; height:16px; background:#ff9800; border-radius:2px;"></div>
+                <span>橙色：已清洗區域</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div style="width:16px; height:16px; background:#ffeb3b; border-radius:2px;"></div>
+                <span>黃色：無法處理區域</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div style="width:16px; height:16px; background:#b0b0b0; border-radius:2px;"></div>
+                <span>灰色：不存在區域</span>
+            </div>
+        </div>
+
+        <!-- 該次清洗範圍：可多組新增、直行橫行並列 + 顏色選擇 -->
         <div class="form-group">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="margin:0;">該次清洗範圍</label>
-                <button type="button" class="btn btn-sm btn-primary" onclick="addRangeGroup()">+ 新增範圍</button>
+                <label style="margin:0;">區域設定</label>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addRangeGroup()">+ 新增區域</button>
             </div>
 
-            <!-- 多組範圍容器 -->
             <div id="rangeGroupsContainer" style="margin-top:10px;">
-                <!-- 動態生成範圍組 -->
             </div>
         </div>
 
@@ -353,7 +367,7 @@ function init() {
     if (currentProjectId) loadProject(currentProjectId);
 }
 
-// 備註彈窗
+// 備註彈窗（含圖表+顏色標籤）
 function showRemarkModal(text, chartData, imageBase64) {
     text = decodeURIComponent(text || '');
     imageBase64 = decodeURIComponent(imageBase64 || '');
@@ -364,7 +378,21 @@ function showRemarkModal(text, chartData, imageBase64) {
     
     if (chartData) {
         try { chartData = JSON.parse(decodeURIComponent(chartData)); } catch (e) {}
-        if (chartData) chartBox.appendChild(renderFullGrid(chartData));
+        if (chartData) {
+            // 加入顏色標籤
+            const label = document.createElement('div');
+            label.style.marginBottom = '8px';
+            label.style.display = 'flex';
+            label.style.gap = '12px';
+            label.style.fontSize = '0.9em';
+            label.innerHTML = `
+                <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#ff9800;"></div>已清洗</div>
+                <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#ffeb3b;"></div>無法處理</div>
+                <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#b0b0b0;"></div>不存在</div>
+            `;
+            chartBox.appendChild(label);
+            chartBox.appendChild(renderFullGrid(chartData));
+        }
     }
 
     const img = document.getElementById('remarkImage');
@@ -397,7 +425,7 @@ function closeChartModal() { document.getElementById('chartModal').style.display
 // 數字補零
 function padNumber(num) { return num.toString().padStart(2, '0'); }
 
-// 渲染圖表：多組範圍全部變綠
+// 渲染圖表：多顏色
 function renderFullGrid(gridData) {
     const { cols, rows, ranges, streetCode = '' } = gridData;
     const container = document.createElement('div');
@@ -428,18 +456,22 @@ function renderFullGrid(gridData) {
             const cell = document.createElement('div');
             cell.className = 'grid-cell';
             
-            // 任一組範圍符合就變綠
-            let isFilled = false;
+            let color = null;
             if (ranges && ranges.length > 0) {
                 ranges.forEach(g => {
                     const cs = +g.colStart || 1;
                     const ce = +g.colEnd || cols;
                     const rs = +g.rowStart || 1;
                     const re = +g.rowEnd || rows;
-                    if (c >= cs && c <= ce && r >= rs && r <= re) isFilled = true;
+                    if (c >= cs && c <= ce && r >= rs && r <= re) {
+                        color = g.type;
+                    }
                 });
             }
-            if (isFilled) cell.classList.add('filled');
+            if (color === 'clean') cell.style.backgroundColor = '#ff9800';
+            if (color === 'block') cell.style.backgroundColor = '#ffeb3b';
+            if (color === 'none')  cell.style.backgroundColor = '#b0b0b0';
+            
             rowDiv.appendChild(cell);
         }
         container.appendChild(rowDiv);
@@ -456,10 +488,11 @@ function renderGrid() {
     const ranges = [];
     document.querySelectorAll('.range-group').forEach(g => {
         const colStart = +g.querySelector('.colStart').value || 1;
-        const colEnd = +g.querySelector('.colEnd').value || cols;
+        const colEnd   = +g.querySelector('.colEnd').value || cols;
         const rowStart = +g.querySelector('.rowStart').value || 1;
-        const rowEnd = +g.querySelector('.rowEnd').value || rows;
-        ranges.push({ colStart, colEnd, rowStart, rowEnd });
+        const rowEnd   = +g.querySelector('.rowEnd').value || rows;
+        const type     = g.querySelector('.rangeType').value;
+        ranges.push({ colStart, colEnd, rowStart, rowEnd, type });
     });
 
     const container = document.getElementById('previewGrid');
@@ -468,7 +501,7 @@ function renderGrid() {
     container.appendChild(renderFullGrid(currentGridData));
 }
 
-// 新增一組範圍
+// 新增一組範圍（含顏色類型）
 function addRangeGroup() {
     const container = document.getElementById('rangeGroupsContainer');
     const cols = +document.getElementById('gridCols').value || 6;
@@ -502,6 +535,14 @@ function addRangeGroup() {
                 <input type="number" class="rowEnd" min="1" value="${rows}" oninput="renderGrid()">
             </div>
         </div>
+        <div style="flex:1;">
+            <label style="font-size:0.9em;">類型</label>
+            <select class="rangeType" oninput="renderGrid()" style="width:100%;">
+                <option value="clean">橙色：已清洗</option>
+                <option value="block">黃色：無法處理</option>
+                <option value="none">灰色：不存在</option>
+            </select>
+        </div>
         <button type="button" class="btn btn-sm btn-danger" onclick="removeRangeGroup(this)">−</button>
     `;
     container.appendChild(div);
@@ -530,7 +571,21 @@ function saveGridChart() {
     const target = document.getElementById('savedGridChart');
     target.style.display = 'block';
     target.innerHTML = '<label>示意圖表：</label>';
+    
+    // 加入標籤
+    const label = document.createElement('div');
+    label.style.margin = '6px 0';
+    label.style.display = 'flex';
+    label.style.gap = '12px';
+    label.style.fontSize = '0.9em';
+    label.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#ff9800;"></div>已清洗</div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#ffeb3b;"></div>無法處理</div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:14px;height:14px;background:#b0b0b0;"></div>不存在</div>
+    `;
+    target.appendChild(label);
     target.appendChild(renderFullGrid(currentGridData));
+    
     closeChartModal();
 }
 
@@ -768,8 +823,8 @@ function sortRecords(col) {
             case 4: valA = +a.cleaningAgent || 0; valB = +b.cleaningAgent || 0; break;
             case 5: valA = (a.staff || "").toLowerCase(); valB = (b.staff || "").toLowerCase(); break;
             case 6: valA = (a.cleanScope || "").toLowerCase(); valB = (b.cleanScope || "").toLowerCase(); break;
-            case 7: valA = +a.lineCount || 0; valB = +b.lineCount || 0; break;
-            case 8: valA = +a.waterUsage || 0; valB = +a.waterUsage || 0; break;
+            case 7: valA = +a.lineCount || 0; valB = +a.lineCount || 0; break;
+            case 8: valA = +a.waterUsage || 0; valB = +b.waterUsage || 0; break;
             case 9: valA = (a.operator || "").toLowerCase(); valB = (b.operator || "").toLowerCase(); break;
             default: return 0;
         }
