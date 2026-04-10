@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>進度記錄表</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="modal-overlay remark-modal" id="remarkModal"><div class="modal-content"><div class="modal-header"><h3>備註 & 圖片</h3><button class="modal-close" onclick="closeRemarkModal()">&times;</button></div><div id="remarkContent" style="padding:10px;"></div><div id="remarkChart" style="padding:10px;"></div><img id="remarkImage" class="remark-image" style="display:none;"><div class="modal-footer"><button class="btn btn-primary" onclick="closeRemarkModal()">關閉</button></div></div></div>
+<div class="modal-overlay worktime-modal" id="worktimeModal"><div class="modal-content"><div class="modal-header"><h3>運作時間</h3><button class="modal-close" onclick="closeWorktimeModal()">&times;</button></div><div id="worktimeContent" style="padding:10px;"></div><div class="modal-footer"><button class="btn btn-primary" onclick="closeWorktimeModal()">關閉</button></div></div></div>
+
+<!-- 新增的記錄操作彈窗 -->
+<div class="modal-overlay" id="recordModal">
+    <div class="modal-content" style="max-width:800px;">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus-circle"></i> <span id="recordModalTitle">新增記錄</span></h2>
+            <button class="modal-close" onclick="closeRecordModal()">&times;</button>
+        </div>
+        <div class="form-group"><label>日期</label><input type="date" id="recordDate"></div>
+        <div class="direction-area-row">
+            <div class="form-group"><label>面向街道</label><select id="direction"></select></div>
+            <div class="form-group"><label>時間段</label><select id="timeSlot"><option>上午</option><option>下午</option><option>整天</option></select></div>
+        </div>
+        <div class="form-group"><label>運作時間</label><div id="timePairsContainer"></div><button type="button" class="btn btn-sm btn-primary" onclick="addTimePair()">+ 新增</button></div>
+        <div class="direction-area-row">
+            <div class="form-group"><label>清洗範圍</label><input type="text" id="cleanScope"></div>
+            <div class="form-group"><label>行數</label><input type="number" id="lineCount"></div>
+            <div class="form-group"><label>清洗面積(m²)</label><input type="number" id="cleanArea"></div>
+        </div>
+        <div class="direction-area-row">
+            <div class="form-group"><label>用水量(ml)</label><input type="number" id="waterUsage"></div>
+            <div class="form-group"><label>清潔劑(ml)</label><input type="number" id="cleaningAgent"></div>
+        </div>
+        <div class="direction-area-row">
+            <div class="form-group"><label>操作員</label><input type="text" id="operator"></div>
+            <div class="form-group"><label>負責人</label><input type="text" id="cleaningStaff"></div>
+        </div>
+        <div class="form-group">
+            <label>示意圖</label>
+            <div class="direction-area-row">
+                <div class="form-group"><label>直行</label><input type="number" id="gridCols" value="6" oninput="renderGrid()"></div>
+                <div class="form-group"><label>橫行</label><input type="number" id="gridRows" value="1" oninput="renderGrid()"></div>
+                <div class="form-group"><label>街名代號</label><input type="text" id="streetCode" oninput="renderGrid()"></div>
+            </div>
+            <div class="form-group">
+                <button type="button" class="btn btn-sm btn-primary" onclick="addRangeGroup()">+ 新增區域</button>
+                <div id="rangeGroupsContainer" style="margin-top:10px;"></div>
+            </div>
+            <div id="chartPreview"><div id="previewGrid" class="grid-canvas"></div></div>
+            <div id="savedGridChart" class="saved-chart" style="display:none;"></div>
+            <label>圖片</label><input type="file" id="exampleImage" accept="image/*">
+        </div>
+        <div class="form-group"><label>備註</label><textarea id="remark" rows="3"></textarea></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="addCleaningRecord()">儲存記錄</button>
+        </div>
+    </div>
+</div>
+<!-- 新增的記錄詳情彈窗 -->
+<div class="modal-overlay" id="recordDetailModal">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <h3>記錄詳情</h3>
+            <button class="modal-close" onclick="closeRecordDetailModal()">&times;</button>
+        </div>
+        <div id="recordDetailContent" style="padding:10px; line-height:1.8;"></div>
+        <div id="recordDetailChart" style="padding:10px;"></div>
+        <img id="recordDetailImage" class="remark-image" style="display:none;">
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="closeRecordDetailModal()">關閉</button>
+        </div>
+    </div>
+</div>
+<div id="mainContent">
+    <a href="index.html" class="btn" style="background-color: #6c757d; color: white; text-decoration: none; display: inline-block; margin-bottom: 15px;">
+        <i class="fas fa-arrow-left"></i> 返回工程管理
+    </a>
+    <div class="header">
+        <h1><i class="fas fa-clipboard-list"></i> 進度記錄表</h1>
+        <div class="project-info">
+            <span id="current-project" style="font-weight:bold; color:#2c6eec;">項目：載入中...</span><br>
+            <span id="total-area">總面積：0 m²</span>｜
+            <span id="overall-completion">完成率：0%</span><br>
+            <span id="project-date-info"></span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h2><i class="fas fa-chart-pie"></i> 進度統計</h2></div>
+        <div class="summary-stats">
+            <div class="stat-card"><div class="stat-label">已完成</div><div class="stat-value" id="completedArea">0</div></div>
+            <div class="stat-card"><div class="stat-label">完成率</div><div class="stat-value" id="completionRate">0%</div></div>
+            <div class="stat-card"><div class="stat-label">清潔劑</div><div class="stat-value" id="totalCleaningAgent">0</div></div>
+        </div>
+        <div class="completion-chart"><canvas id="completionChart"></canvas></div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-list-alt"></i> 記錄列表</h2>
+            <input type="text" class="filter-input" id="recordFilter" placeholder="🔍 搜尋..." oninput="filterRecords()">
+        </div>
+        <!-- 新增的按鈕行，與工程管理頁面佈局一致 -->
+        <div style="display:flex; gap:10px; margin-bottom: 15px; align-items: center;">
+            <button class="btn btn-primary" onclick="openRecordModal()">新增記錄</button>
+            <button class="btn btn-danger" onclick="deleteCurrentRecord()">刪除記錄</button>
+            <button class="btn btn-primary" onclick="openEditRecordModal()">修改記錄</button>
+            <button class="btn btn-success" onclick="showRecordDetail()">記錄詳情</button>
+        </div>
+        <div class="table-container">
+            <table id="recordTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortRecords(0)">日期</th>
+                        <th onclick="sortRecords(1)">街道</th>
+                        <th onclick="sortRecords(2)">時間</th>
+                        <th onclick="sortRecords(3)">面積</th>
+                        <th onclick="sortRecords(4)">清潔劑</th>
+                        <th onclick="sortRecords(5)">操作員</th>
+                        <th onclick="sortRecords(6)">負責人</th>
+                        <th>操作</th>
+                    <tr>
+                <thead>
+                <tbody id="recordsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

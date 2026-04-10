@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清洗進度記錄表 - 首頁 (工程管理)</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="modal-overlay" id="projectModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-cog"></i> 項目設定</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="form-group"><label>項目名稱</label><input type="text" id="modalProjectName"></div>
+        <div class="direction-area-row">
+            <div class="form-group"><label>開始日期</label><input type="date" id="modalStartDate"></div>
+            <div class="form-group"><label>完成日期</label><input type="date" id="modalEndDate"></div>
+        </div>
+        <div class="form-group">
+            <label>街道名稱與總面積</label>
+            <div class="area-row">
+                <div><label>北面</label><input type="text" id="modalStreetNorth"><label>面積</label><input type="number" id="modalTotalNorth"></div>
+                <div><label>東面</label><input type="text" id="modalStreetEast"><label>面積</label><input type="number" id="modalTotalEast"></div>
+                <div><label>南面</label><input type="text" id="modalStreetSouth"><label>面積</label><input type="number" id="modalTotalSouth"></div>
+                <div><label>西面</label><input type="text" id="modalStreetWest"><label>面積</label><input type="number" id="modalTotalWest"></div>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" onclick="saveProjectFromModal()">儲存設定</button></div>
+    </div>
+</div>
+
+<div id="mainContent">
+    <div class="header">
+        <h1><i class="fas fa-building"></i> 總工程管理系統</h1>
+        <div class="sync-buttons">
+            <button class="btn btn-primary" onclick="exportBackup()">📥 匯出系統完整備份</button>
+            <button class="btn btn-primary" onclick="document.getElementById('backupFile').click()">📤 匯入備份</button>
+            <input type="file" id="backupFile" accept=".json" onchange="importBackup(event)">
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-folder-open"></i> 工程管理目錄</h2>
+            <input type="text" class="filter-input" id="projectFilter" placeholder="🔍 搜尋工程..." oninput="filterProjects()">
+        </div>
+        
+        <div style="display:flex; gap:10px; margin-bottom: 15px; align-items: center;">
+            <button class="btn btn-primary" onclick="openEditProjectModal()">編輯設定</button>
+            <button class="btn btn-primary" onclick="openNewProjectModal()">新增工程</button>
+            <button class="btn btn-danger" onclick="deleteCurrentProject()">刪除工程</button>
+            
+            <div style="margin-left: auto; display: flex; gap: 10px;">
+                <button class="btn btn-success" onclick="goToPage('planning-progress.html')"><i class="fas fa-calendar-alt"></i> 規劃進度</button>
+                <button class="btn btn-success" onclick="goToPage('progress-record.html')"><i class="fas fa-clipboard-list"></i> 進度記錄</button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table class="project-table" id="projectTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortProjects(0)">工程名稱</th>
+                        <th onclick="sortProjects(1)">開始日期</th>
+                        <th onclick="sortProjects(2)">完成日期</th>
+                        <th onclick="sortProjects(3)">記錄數</th>
+                        <th onclick="sortProjects(8)">總面積</th>
+                        <th onclick="sortProjects(9)">完成度</th>
+                    </tr>
+                </thead>
+                <tbody id="projectTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
